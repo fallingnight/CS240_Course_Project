@@ -19,6 +19,44 @@ Scalable Graph Partitioning for Communication-Efficient Distributed Optimization
 
 \maketitle
 
+\section{Course-Level Algorithmic Background}
+
+Before introducing the application, it is useful to recall several basic ideas
+from algorithm design and analysis. Many modern data problems can be made
+precise by first choosing a mathematical representation. In this project, the
+representation is a graph. A graph abstracts a system into vertices and edges:
+vertices are objects or computational units, while edges represent
+relationships, dependencies, or communication links. If edges have weights, the
+weights usually represent cost, similarity, capacity, or strength of
+interaction.
+
+Graph problems are central in algorithms because they connect modeling,
+optimization, and complexity. Shortest paths, minimum spanning trees, matchings,
+flows, cuts, and graph partitioning are all examples where a concrete
+application becomes an algorithmic problem after the graph model is chosen.
+Among these, cut problems are especially relevant here. A cut separates a graph
+into different vertex sets and measures the edges crossing between them.
+Minimum-cut algorithms can solve some cut problems exactly, but adding extra
+requirements such as balance makes the problem substantially harder.
+
+This project therefore starts from a familiar course idea---representing a
+problem as a graph---and then studies a harder version of a cut problem:
+balanced graph partitioning. The important algorithmic themes are:
+\begin{itemize}
+    \item \textbf{objective functions}: minimizing cross-partition edge weight;
+    \item \textbf{constraints}: keeping partitions balanced so that no worker
+    receives too much work;
+    \item \textbf{heuristics}: using practical methods when exact optimization
+    is too expensive;
+    \item \textbf{complexity and scalability}: studying how runtime changes as
+    the graph becomes larger.
+\end{itemize}
+
+With this background, the project can be read as a step-by-step application of
+course material. Stage 1 builds the graph model and explains the related work.
+Stage 2 chooses and analyzes a representative algorithm. Later stages implement
+the algorithm, test it, and discuss possible extensions.
+
 \section{Application Background}
 
 This project studies how classical graph partitioning algorithms can be used in

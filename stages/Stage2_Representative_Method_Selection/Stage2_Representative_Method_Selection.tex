@@ -19,6 +19,33 @@ Kernighan--Lin Refinement for Balanced Graph Partitioning}
 
 \maketitle
 
+\section{Algorithmic Preliminaries}
+
+Stage 1 formulated the application as a balanced graph partitioning problem.
+Before selecting a specific paper, we clarify the course-level algorithmic
+ideas behind the methods used in this project.
+
+First, balanced graph partitioning is a constrained optimization problem. The
+objective is to minimize the cut, but the partition must also remain balanced.
+This is different from simply finding any small cut. A very small cut may put
+almost every vertex on one side, which is useless for distributing work across
+several workers. The balance constraint is what makes the problem closer to
+the hard graph partitioning problems discussed in algorithms.
+
+Second, the project compares three algorithm design styles. The greedy
+baseline makes locally reasonable choices while constructing a partition.
+Spectral bisection relaxes a discrete graph problem into a linear-algebraic
+problem involving the graph Laplacian. Kernighan--Lin uses local search: it
+starts from an existing solution and repeatedly tries to improve it by
+exchanging vertices. These are not unrelated tricks; they are three standard
+ways to handle difficult discrete optimization problems when an exact optimum
+is too costly.
+
+Third, this stage uses asymptotic analysis to make the methods comparable.
+Instead of only asking which method gives a lower cut, we also ask how much
+time it takes and how the cost depends on $n=|V|$, $m=|E|$, and the number of
+parts $k$. This prepares the later implementation and experimental stages.
+
 \section{Selected Representative Method}
 
 The representative method selected for reproduction is the Kernighan--Lin graph
