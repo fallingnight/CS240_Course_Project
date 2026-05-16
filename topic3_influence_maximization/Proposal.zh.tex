@@ -56,7 +56,7 @@
 
 \section{相关工作}
 
-\textbf{Kempe, Kleinberg, and Tardos}~\cite{kempe2003} 系统提出了社交网络中的影响力最大化问题，证明了该问题在 IC 和 LT 模型下是 NP-hard 的，并利用子模最大化理论说明贪心算法可以达到 $(1-1/e)$ 的近似比。这是我们\textbf{重点复现的代表性论文}。
+\textbf{Kempe, Kleinberg, and Tardos}~\cite{kempe2003} 系统提出了社交网络中的影响力最大化问题，证明了该问题在 IC 和 LT 模型下是 NP-hard 的，并利用子模最大化理论说明贪心算法可以达到 $(1-1/e)$ 的近似比。这是我们理解影响力最大化与子模贪心近似联系的\textbf{核心基础论文}。
 
 \textbf{Nemhauser, Wolsey, and Fisher}~\cite{nemhauser1978} 证明了简单贪心算法在非负、单调、子模函数基数约束最大化问题上的经典近似保证。这一结果构成了所有基于贪心策略的影响力最大化算法的理论基石。
 
@@ -64,7 +64,7 @@
 
 \textbf{Tang, Xiao, and Shi}~\cite{tang2014} 提出了 TIM (Two-phase Influence Maximization) 算法，利用反向影响力采样 (RIS) 实现了接近最优的时间复杂度，同时保证 $(1-1/e-\varepsilon)$ 的近似比。\textbf{Tang, Shi, and Xiao}~\cite{tang2015} 随后提出的 IMM 算法，则利用鞅论 (martingale) 集中不等式进一步收紧了样本复杂度，使其能够扩展至包含数十亿条边的网络。
 
-\textbf{Mirzasoleiman 等人}~\cite{mirzasoleiman2013} 提出了 GreeDI，这是一种针对基数约束下子模最大化问题的分布式协议。GreeDI 将基础集合划分到多台机器上，在每个分区上运行局部贪心算法，最后合并结果。它达到了常数因子的近似，并可直接应用于分布式影响力最大化。
+\textbf{Mirzasoleiman 等人}~\cite{mirzasoleiman2013} 提出了 GreeDI，这是一种针对基数约束下子模最大化问题的分布式协议。GreeDI 将基础集合划分到多台机器上，在每个分区上运行局部贪心算法，最后合并结果。它达到了常数因子的近似，并为本项目的分布式优化部分提供主要方法基础。
 
 \section{算法与技术计划}
 
@@ -88,7 +88,7 @@
     \item \textbf{TIM / IMM：} 生成随机的反向可达 (Reverse Reachable, RR) 集合，并通过带权最大覆盖过程选择种子。这些方法在接近线性的时间内实现了 $(1-1/e-\varepsilon)$ 的近似。
 \end{itemize}
 
-\textbf{分布式扩展：}
+\textbf{分布式优化部分：}
 \begin{itemize}
     \item \textbf{GreeDI 风格分布式贪心算法：} 将图划分给 $m$ 个智能体；每个智能体在其子图上运行局部贪心算法，并返回 top-$k$ 个候选节点；中央协调器合并这 $mk$ 个候选节点，并进行最后一轮的贪心选择。我们将研究分区数量 $m$ 和通信预算对解质量的影响。
 \end{itemize}
@@ -113,7 +113,7 @@
     \item 影响范围随着种子预算 $k$ 的增加而增加，但边际收益单调递减，证实了 $\sigma$ 的子模性。
 \end{itemize}
 
-\textbf{分布式扩展目标：}
+\textbf{分布式优化目标：}
 \begin{itemize}
     \item GreeDI 风格的分布式方案相比中心化贪心算法，能够实现合理的近似比。
     \item 解质量随着分区数量 $m$ 的增加而优雅地下降（degrade gracefully），体现了分布式子模优化中通信成本与近似质量之间的权衡。
@@ -134,8 +134,8 @@
 成员 & 负责内容 & 预期贡献 \\
 \midrule
 陈亦新 & 建模与理论 & 问题形式化、相关工作与复杂度分析 \\
-张弼弛 & 算法 & 贪心、CELF/CELF++、TIM/IMM 算法实现与分析 \\
-叶瑶勤 & 实验 & 数据集处理、实验评估、可视化与分布式扩展 \\
+张弼弛 & 算法 & 贪心、CELF/CELF++、TIM/IMM、GreeDI 算法实现与分析 \\
+叶瑶勤 & 实验 & 数据集处理、实验评估、可视化与分布式优化分析 \\
 \bottomrule
 \end{tabular}
 

@@ -89,8 +89,8 @@ a cardinality constraint.
 \textbf{Kempe, Kleinberg, and Tardos}~\cite{kempe2003} introduced the
 influence maximization problem for social networks, proved NP-hardness under
 the IC and LT models, and showed that the greedy algorithm yields a
-$(1-1/e)$-approximate solution. This is our \textbf{primary paper for
-reproduction}.
+$(1-1/e)$-approximate solution. This is our \textbf{core foundation} for
+connecting influence maximization with submodular greedy approximation.
 
 \textbf{Nemhauser, Wolsey, and Fisher}~\cite{nemhauser1978} proved the
 classical approximation guarantee for maximizing a nonnegative monotone
@@ -118,8 +118,8 @@ and scale to networks with billions of edges.
 distributed protocol for submodular maximization under cardinality constraints.
 GreeDI partitions the ground set across multiple machines, runs local greedy
 on each partition, and merges the results. It achieves a constant-factor
-approximation and is directly applicable to distributed influence
-maximization.
+approximation and provides the main basis for our distributed optimization
+component.
 
 \section{Algorithm and Technical Plan}
 
@@ -150,7 +150,7 @@ We plan to implement and systematically compare the following methods:
     achieve $(1-1/e-\varepsilon)$ approximation in near-linear time.
 \end{itemize}
 
-\textbf{Distributed extension:}
+\textbf{Distributed optimization component:}
 \begin{itemize}
     \item \textbf{GreeDI-style distributed greedy:} partition the graph across
     $m$ agents; each agent runs local greedy on its subgraph and returns its
@@ -190,7 +190,7 @@ size~$n$, seed budget~$k$, and number of Monte Carlo samples~$R$.
     gains decrease monotonically, confirming the submodularity of~$\sigma$.
 \end{itemize}
 
-\textbf{Distributed extension goals:}
+\textbf{Distributed optimization goals:}
 \begin{itemize}
     \item The GreeDI-style distributed scheme achieves a reasonable
     approximation ratio compared to centralized greedy.
@@ -216,8 +216,8 @@ size~$n$, seed budget~$k$, and number of Monte Carlo samples~$R$.
 Member & Responsibility & Expected Contribution \\
 \midrule
 Yixin Chen & Modeling and theory & Problem formulation, related work, and complexity analysis \\
-Bichi Zhang & Algorithms & Greedy, CELF/CELF++, TIM/IMM implementation and analysis \\
-Yaoqin Ye & Experiments & Datasets, evaluation, plots, and distributed extension \\
+Bichi Zhang & Algorithms & Greedy, CELF/CELF++, TIM/IMM, GreeDI implementation and analysis \\
+Yaoqin Ye & Experiments & Datasets, evaluation, plots, and distributed optimization analysis \\
 \bottomrule
 \end{tabular}
 
