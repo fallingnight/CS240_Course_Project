@@ -1,89 +1,147 @@
-\documentclass[UTF8, 11pt]{ctexart}
+\documentclass[UTF8, 10pt]{ctexart}
 
-\usepackage[margin=1in]{geometry}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{titlesec}
+\titlespacing*{\section}{0pt}{0.5\baselineskip}{0.2\baselineskip}
+\linespread{0.96}
+\linespread{0.95}
 \usepackage{amsmath, amssymb}
 \usepackage{booktabs}
 \usepackage{hyperref}
 \usepackage{enumitem}
-\setlist{leftmargin=*}
-\setlength{\parskip}{0.35em}
+\setlist{nosep,leftmargin=*}
+\setlength{\parskip}{0pt}
 \setlength{\parindent}{0pt}
 
-\title{\textbf{项目提案}\\
-分布式影响力最大化中的子模优化与贪心近似算法}
-\author{团队成员：陈亦新、张弼弛、叶瑶勤}
-\date{CS240: 算法设计与分析，2026 年春季学期}
-
 \begin{document}
-
-\maketitle
+\vspace*{-4em}
+\begin{center}
+{\Large \textbf{项目提案：分布式影响力最大化中的子模优化与贪心近似算法}}
+\end{center}
+\vspace*{-1em}
 
 \section{选题说明}
 
-本项目选择课程参考选题中的 \textbf{Topic 3: 影响力最大化}。影响力最大化研究如何在一个网络中选择有限数量的种子节点，使信息、行为、产品或干预策略能够通过网络传播并覆盖尽可能多的节点。它最初常用于病毒式营销和社交网络分析，但其算法结构也非常适合解释多智能体网络中的协同决策问题。
+本项目选择课程参考选题中的 \textbf{Topic 3: 影响力最大化}。影响力最大化研究如何在一个社交网络中选择有限数量的种子节点，使信息、行为、产品或干预策略能够通过网络传播并覆盖尽可能多的节点。它不仅是病毒式营销、公共卫生干预和虚假信息控制的基础模型，还在线性代数、概率图模型等现代网络应用与经典组合优化之间建立了清晰的算法联系。
 
-本项目将主题具体化为：\textbf{分布式影响力最大化中的子模优化与贪心近似算法}。这一选题与分布式及大规模优化、多智能体决策与控制等研究方向有自然联系：网络中的每个智能体或局部计算节点只掌握部分图结构或局部传播信息，需要通过通信协同估计全局影响函数，并在有限预算下选择全局有效的种子集合。
+本项目将主题具体化为：\textbf{分布式影响力最大化中的子模优化与贪心近似算法}。我们将从两个互补的视角研究该问题：
+\begin{itemize}
+    \item \textbf{算法视角：} 经典贪心算法如何利用影响力函数的子模性（submodularity）？诸如懒惰求值（CELF/CELF++）和反向影响力采样（TIM/IMM）等加速技术，如何在保留近似保证的同时大幅减少计算量？
+    \item \textbf{分布式视角：} 在大规模网络中，单个机器或智能体通常无法获取完整图结构。每个局部智能体只能观察到一个子图或估计局部传播效应，然后通过与其他智能体通信，在固定预算下近似求出全局有效的种子集合。这一设定自然地与分布式子模最大化和多智能体协同问题联系起来。
+\end{itemize}
 
 \section{问题形式化}
 
-给定有向或无向图 $G=(V,E)$，其中 $V$ 是节点集合，$E$ 是边集合。每条边 $(u,v)$ 可以带有传播概率 $p_{uv}$。给定预算 $k$，目标是在所有大小不超过 $k$ 的节点集合中选择种子集合 $S\subseteq V$，最大化期望影响范围：
+给定有向或无向图 $G=(V,E)$，其中 $V$ 是节点集合，$E$ 是边集合。每条边 $(u,v)$ 带有传播概率 $p_{uv} \in [0,1]$。给定预算 $k$，目标是在所有大小不超过 $k$ 的节点集合中选择种子集合 $S\subseteq V$，最大化期望影响范围：
 \[
     \max_{S\subseteq V,\ |S|\leq k} \sigma(S),
 \]
-其中 $\sigma(S)$ 表示从初始种子集合 $S$ 出发，在独立级联模型或线性阈值模型下最终被激活节点数的期望。
+其中 $\sigma(S)$ 表示从初始种子集合 $S$ 出发，在随机扩散模型下最终被激活节点数的期望。
 
-该问题是组合优化问题。经典结果表明，在常用扩散模型下，$\sigma(S)$ 具有单调性和子模性，即加入一个新节点的边际收益会随着已有种子集合变大而下降：
+\textbf{扩散模型。}
+我们考虑两种经典模型：
+\begin{itemize}
+    \item \textbf{独立级联模型 (IC)：} 当节点 $u$ 被激活时，它有且仅有一次机会以概率 $p_{uv}$ 独立地激活其未激活的邻居节点 $v$。
+    \item \textbf{线性阈值模型 (LT)：} 每个节点 $v$ 随机抽取一个阈值 $\theta_v \in [0,1]$；当指向节点 $v$ 的所有已激活邻居的边权重之和超过 $\theta_v$ 时，节点 $v$ 被激活。
+\end{itemize}
+
+在这两种模型下，$\sigma(S)$ 均具有单调性和子模性~\cite{kempe2003}，即加入一个新节点的边际收益会随着已有种子集合的增大而下降：
 \[
     \sigma(A\cup\{v\})-\sigma(A)
     \geq
     \sigma(B\cup\{v\})-\sigma(B),
     \quad A\subseteq B,\ v\notin B.
 \]
-因此，虽然精确求解通常是 NP-hard 的，贪心算法仍可获得 $1-1/e$ 的近似保证。
+尽管精确求解影响力最大化问题是 NP-hard 的，但 Nemhauser 等人~\cite{nemhauser1978} 的经典结论表明，对服从基数约束（cardinality constraint）的单调子模函数，贪心算法可以达到 $(1-1/e)$ 的近似保证。
 
 \section{相关工作}
 
-\textbf{Kempe, Kleinberg, and Tardos.}
-Kempe 等人系统提出了影响力最大化问题，证明该问题在独立级联模型和线性阈值模型下是 NP-hard 的，并利用子模最大化理论说明贪心算法可以达到 $1-1/e$ 的近似比。该工作是本项目最主要的代表性论文。
+\textbf{Kempe, Kleinberg, and Tardos}~\cite{kempe2003} 系统提出了社交网络中的影响力最大化问题，证明了该问题在 IC 和 LT 模型下是 NP-hard 的，并利用子模最大化理论说明贪心算法可以达到 $(1-1/e)$ 的近似比。这是我们\textbf{重点复现的代表性论文}。
 
-\textbf{Nemhauser, Wolsey, and Fisher.}
-Nemhauser 等人的经典结果说明，对非负、单调、子模函数进行基数约束最大化时，简单贪心算法可以取得 $1-1/e$ 近似保证。这一理论结果是影响力最大化算法分析的基础。
+\textbf{Nemhauser, Wolsey, and Fisher}~\cite{nemhauser1978} 证明了简单贪心算法在非负、单调、子模函数基数约束最大化问题上的经典近似保证。这一结果构成了所有基于贪心策略的影响力最大化算法的理论基石。
 
-\textbf{Leskovec et al.}
-Leskovec 等人提出了 CELF 等懒惰贪心加速思想，利用子模函数的边际收益递减性质减少重复计算，从而显著提高大规模网络上的影响力最大化效率。本项目计划把普通贪心和懒惰贪心作为核心复现对象。
+\textbf{Leskovec 等人}~\cite{leskovec2007} 提出了 CELF (Cost-Effective Lazy Forward) 优化方案，利用子模函数的边际收益递减性质跳过不必要的评估。CELF 在保持近似比不变的前提下，比朴素贪心算法快了将近 700 倍。\textbf{Goyal 等人}~\cite{goyal2011} 进一步提出了 CELF++，在 CELF 的基础上又提升了 35--55\% 的速度。
+
+\textbf{Tang, Xiao, and Shi}~\cite{tang2014} 提出了 TIM (Two-phase Influence Maximization) 算法，利用反向影响力采样 (RIS) 实现了接近最优的时间复杂度，同时保证 $(1-1/e-\varepsilon)$ 的近似比。\textbf{Tang, Shi, and Xiao}~\cite{tang2015} 随后提出的 IMM 算法，则利用鞅论 (martingale) 集中不等式进一步收紧了样本复杂度，使其能够扩展至包含数十亿条边的网络。
+
+\textbf{Mirzasoleiman 等人}~\cite{mirzasoleiman2013} 提出了 GreeDI，这是一种针对基数约束下子模最大化问题的分布式协议。GreeDI 将基础集合划分到多台机器上，在每个分区上运行局部贪心算法，最后合并结果。它达到了常数因子的近似，并可直接应用于分布式影响力最大化。
 
 \section{算法与技术计划}
 
-项目将实现并比较以下方法：
+项目将实现并系统比较以下方法：
+
+\textbf{基线方法：}
 \begin{itemize}
-    \item \textbf{随机基线：} 随机选择 $k$ 个种子节点，用作最低基线。
-    \item \textbf{度数中心性基线：} 选择出度或度数最高的 $k$ 个节点，作为简单图启发式方法。
-    \item \textbf{经典贪心算法：} 每轮选择边际影响增益最大的节点。
-    \item \textbf{CELF 懒惰贪心算法：} 利用子模性维护候选节点的上界，减少传播模拟次数。
-    \item \textbf{分布式扩展：} 将图划分给多个 agent，每个 agent 估计局部边际收益，再通过聚合或 consensus 风格通信近似选择全局种子。
+    \item \textbf{随机 (Random)：} 均匀随机选择 $k$ 个种子节点。
+    \item \textbf{度数中心性 (Degree centrality)：} 选择出度或度数最高的 $k$ 个节点，作为简单图结构启发式方法。
+    \item \textbf{PageRank：} 选择 PageRank 分数最高的 $k$ 个节点。
 \end{itemize}
 
-扩散模型以独立级联模型为主。影响力估计采用 Monte Carlo 模拟。实验图包括合成随机图、Barabasi--Albert 无标度图、Watts--Strogatz 小世界图，以及一个小型真实网络数据集。
+\textbf{贪心方法：}
+\begin{itemize}
+    \item \textbf{经典贪心算法 (Standard greedy)：} 每轮通过 Monte Carlo 模拟，选择边际影响增益最大的节点。
+    \item \textbf{CELF / CELF++ 懒惰贪心算法：} 维护候选节点边际收益的上界，跳过那些上界低于当前最优值的节点的重新评估，从而大幅减少昂贵的影响力估计次数。
+\end{itemize}
+
+\textbf{可扩展方法：}
+\begin{itemize}
+    \item \textbf{TIM / IMM：} 生成随机的反向可达 (Reverse Reachable, RR) 集合，并通过带权最大覆盖过程选择种子。这些方法在接近线性的时间内实现了 $(1-1/e-\varepsilon)$ 的近似。
+\end{itemize}
+
+\textbf{分布式扩展：}
+\begin{itemize}
+    \item \textbf{GreeDI 风格分布式贪心算法：} 将图划分给 $m$ 个智能体；每个智能体在其子图上运行局部贪心算法，并返回 top-$k$ 个候选节点；中央协调器合并这 $mk$ 个候选节点，并进行最后一轮的贪心选择。我们将研究分区数量 $m$ 和通信预算对解质量的影响。
+\end{itemize}
+
+\textbf{数据集。}
+我们将使用合成网络和真实世界网络进行评估：
+\begin{itemize}
+    \item \textbf{合成网络：} Erd\H{o}s--R\'enyi 随机图、Barab\'asi--Albert 无标度图和 Watts--Strogatz 小世界图，节点数规模 $n \in \{500, 1000, 5000, 10000\}$。
+    \item \textbf{真实世界网络：} NetHEPT（高能物理合作网络，约 1.5 万节点，5.9 万边）和 Wiki-Vote（维基百科管理员投票网络，约 7000 节点，10.4 万边）。
+\end{itemize}
+
+\textbf{评估指标：}
+期望影响范围（通过 Monte Carlo 估计）、实际运行时间、影响力评估次数，以及算法在图规模 $n$、种子预算 $k$ 和 Monte Carlo 样本数 $R$ 变化时的可扩展性。
 
 \section{项目范围与预期目标}
 
-本项目的核心目标是复现影响力最大化的经典算法现象：
+\textbf{核心复现目标：}
 \begin{itemize}
-    \item 贪心算法相较随机和度数基线能获得更高影响范围；
-    \item CELF 能在保持接近贪心解质量的同时降低运行时间；
-    \item 种子预算 $k$ 增大时，影响范围增加但边际收益递减；
-    \item 分布式近似方案在通信轮数有限时可能牺牲部分解质量，但能体现多智能体协同优化的思想。
+    \item 贪心选择获得的影响范围显著大于随机、度数和 PageRank 基线，验证子模优化的有效性。
+    \item CELF/CELF++ 在保持与标准贪心算法几乎相同的解质量的同时，将运行时间缩短一到两个数量级。
+    \item TIM/IMM 实现了相当的影响范围，并在运行时间上有了进一步的改进，展示了反向影响力采样的优势。
+    \item 影响范围随着种子预算 $k$ 的增加而增加，但边际收益单调递减，证实了 $\sigma$ 的子模性。
 \end{itemize}
 
-可选拓展包括：比较不同传播概率设置、分析 Monte Carlo 次数对结果稳定性的影响、加入通信受限的分布式选择策略，或讨论该问题与分布式优化中局部信息、全局目标和收敛近似之间的关系。
+\textbf{分布式扩展目标：}
+\begin{itemize}
+    \item GreeDI 风格的分布式方案相比中心化贪心算法，能够实现合理的近似比。
+    \item 解质量随着分区数量 $m$ 的增加而优雅地下降（degrade gracefully），体现了分布式子模优化中通信成本与近似质量之间的权衡。
+\end{itemize}
+
+\textbf{可选拓展：}
+\begin{itemize}
+    \item 在相同的图上比较 IC 和 LT 扩散模型。
+    \item 分析 Monte Carlo 样本大小对估计方差的影响。
+    \item 实现一种通信受限的共识协议，智能体在多轮迭代中交换部分信息。
+    \item 探讨它与具有局部信息和全局目标的分布式优化的联系。
+\end{itemize}
 
 \section{团队信息}
 
-成员与分工暂定如下：
-\begin{itemize}
-    \item 陈亦新：问题建模、相关工作与理论分析。
-    \item 张弼弛：贪心算法、CELF 算法与复杂度分析。
-    \item 叶瑶勤：实验实现、可视化与分布式扩展实验。
-\end{itemize}
+\begin{tabular}{@{}lll@{}}
+\toprule
+成员 & 负责内容 & 预期贡献 \\
+\midrule
+陈亦新 & 建模与理论 & 问题形式化、相关工作与复杂度分析 \\
+张弼弛 & 算法 & 贪心、CELF/CELF++、TIM/IMM 算法实现与分析 \\
+叶瑶勤 & 实验 & 数据集处理、实验评估、可视化与分布式扩展 \\
+\bottomrule
+\end{tabular}
+
+\begin{footnotesize}
+\bibliographystyle{unsrt}
+\bibliography{references}
+\end{footnotesize}
 
 \end{document}
