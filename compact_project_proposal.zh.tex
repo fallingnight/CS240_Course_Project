@@ -1,0 +1,115 @@
+\documentclass[10pt]{ctexart}
+\usepackage[a4paper,margin=0.55in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{url}
+\usepackage{xurl}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=blue]{hyperref}
+\usepackage{titlesec}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2pt}
+\setlength{\abovedisplayskip}{3pt}
+\setlength{\belowdisplayskip}{3pt}
+\setlist[itemize]{leftmargin=*,nosep,topsep=1pt}
+\titlespacing*{\section}{0pt}{4pt}{2pt}
+\titleformat{\section}{\bfseries}{\thesection}{0.5em}{}
+\pagestyle{empty}
+\begin{document}
+\begin{center}
+{\large\bfseries 项目计划：通信受限的分布式影响力最大化}\vspace{1mm}\\
+陈亦新 \quad 张弼弛 \quad 叶瑶勤
+\end{center}
+\vspace{-3mm}
+
+\section{选题}
+我们选择主题 3：\emph{影响力最大化（Influence Maximization）}。该任务是在网络中选择少量种子节点，使信息、产品、行为或干预能够传播到尽可能多的节点。它是病毒式营销、公共卫生干预和虚假信息控制中的标准模型，也为基数约束下的单调子模最大化提供了一个清晰例子。
+
+经典的影响力最大化问题已经被充分研究。因此，本项目不提出一个大型新系统，而是聚焦于一个紧凑且适合课程项目的变体：\textbf{通信受限的分布式影响力最大化}。在大规模网络中，图可能被划分到多台机器或多个参与方上。每个本地工作节点只能计算本地边际增益信息，并向协调器发送一小组候选种子节点。我们研究的问题是：\emph{当集中式贪心选择被“本地贪心选择 + 有限通信”替代时，影响力质量会损失多少？}
+
+本项目主要有两个视角。首先，从算法角度，我们研究贪心选择如何利用影响力函数的子模性，以及惰性求值如何减少重复的边际增益计算。其次，从分布式角度，我们评估划分数量和候选节点通信预算如何影响最终种子质量。这样既能控制工作量，又能把经典近似算法与近年的可扩展、分布式影响力最大化研究联系起来。
+
+\section{问题形式化}
+令 $G=(V,E,p)$ 为一个有向图，其中每条边 $(u,v)$ 都有传播概率 $p_{uv}\in[0,1]$。给定种子预算 $k$，集中式影响力最大化问题为
+\[
+\max_{S\subseteq V,\ |S|\le k}\sigma(S),
+\]
+其中 $\sigma(S)$ 表示从种子集合 $S$ 出发后，期望被激活的节点数量。
+
+我们主要使用独立级联模型（Independent Cascade, IC）。当节点 $u$ 第一次变为活跃时，它有一次机会以概率 $p_{uv}$ 激活每个尚未活跃的出邻居 $v$，且各边之间相互独立。在 IC 模型下，$\sigma(S)$ 是单调且子模的 \cite{kempe2003maximizing}：对于 $A\subseteq B\subseteq V$ 且 $v\notin B$，
+\[
+\sigma(A\cup\{v\})-\sigma(A)\ge \sigma(B\cup\{v\})-\sigma(B).
+\]
+因此，标准贪心算法对基数约束下的单调子模最大化可达到 $(1-1/e)$ 近似保证 \cite{nemhauser1978analysis}。精确的影响力最大化是 NP-困难（NP-hard）的 \cite{kempe2003maximizing}，而精确计算传播范围也很昂贵，因此实际算法通常通过蒙特卡洛模拟（Monte Carlo simulation）估计 $\sigma(S)$。
+
+对于分布式场景，假设图被划分为 $m$ 个本地部分。工作节点 $i$ 观察本地子图 $G_i$，并返回一个较小的候选集合 $C_i$，满足 $|C_i|\le q$。协调器构造
+\[
+C=\bigcup_{i=1}^{m} C_i,
+\]
+并选择最终种子集合 $S_{\mathrm{dist}}\subseteq C$，满足 $|S_{\mathrm{dist}}|\le k$。我们通过如下比例与集中式贪心算法比较其质量：
+\[
+\rho=\frac{\sigma(S_{\mathrm{dist}})}{\sigma(S_{\mathrm{cent}})},
+\]
+其中 $S_{\mathrm{cent}}$ 是集中式贪心或惰性贪心得到的解。主要实验变量是划分数量 $m$ 和本地通信预算 $q$。这个简化形式接近 GreeDI 风格的分布式子模最大化 \cite{mirzasoleiman2013distributed}，但规模足够适合课程项目。
+
+\section{相关工作}
+Kempe, Kleinberg, and Tardos \cite{kempe2003maximizing} 在 IC 和 LT 扩散模型下提出了影响力最大化问题，证明了其 NP-困难性，并说明期望影响力函数是单调且子模的。Nemhauser, Wolsey, and Fisher \cite{nemhauser1978analysis} 给出了基数约束下单调子模函数贪心最大化的经典 $(1-1/e)$ 保证。Leskovec et al. \cite{leskovec2007cost} 提出了成本有效的惰性前向（Cost-Effective Lazy Forward, CELF）方法，该方法利用边际增益递减性质避免许多不必要的求值，同时保持贪心解不变。
+
+在分布式优化方面，Mirzasoleiman et al. \cite{mirzasoleiman2013distributed} 提出了 GreeDI：先划分基本集合，在本地运行贪心算法，再由协调器合并被选出的候选元素。这是本项目采用的主要算法模板。近年工作表明，可扩展性和分布式处理仍然是活跃问题，而不是已经解决的实现细节。Wang et al. \cite{wang2023fast} 提出了 PaC-IM，这是一个并行且压缩的影响力最大化框架，可降低大规模边际增益估计的时间和空间成本。Barik et al. \cite{barik2025greediris} 提出了 GreediRIS，将反向影响力采样与分布式流式最大覆盖结合，并明确研究通信瓶颈。Chen, Dey, and Kuhnle \cite{chen2024scalable} 研究了 MapReduce 和自适应复杂度模型中用于规模约束子模最大化的可扩展分布式算法。这些近期论文共同引出了我们更窄的实验问题：在有限通信下，一个简单的 GreeDI 风格候选共享方案能多好地近似集中式贪心算法？
+
+\section{算法和技术计划}
+为了让项目在课程时间内可完成，我们把 TIM、IMM、PaC-IM 和 GreediRIS 等最新系统主要作为参考方法，而不是完整复现目标。我们的实现将聚焦于以下方法。
+
+\textbf{基线方法。} 随机选择；度中心性；以及基于 PageRank 的种子选择。
+
+\textbf{集中式贪心。} 在每一步，选择估计边际增益最大的节点，其中影响力传播范围通过 IC 模型下的蒙特卡洛模拟估计。
+
+\textbf{惰性贪心 / CELF。} 维护一个候选边际增益的优先队列，并且只在必要时重新计算某个节点。这在多数情况下应返回与标准贪心相同的种子集合，同时减少传播范围求值的数量。
+
+\textbf{简单分布式贪心。} 将 $V$ 划分为 $m$ 个部分。每个工作节点在自己的子图上运行本地贪心算法，并返回排名前 $q$ 的候选节点。协调器合并所有候选节点，并在形成的候选池上运行最终的贪心选择。我们测试 $m\in\{2,4,8\}$ 和 $q\in\{k,2k,5k\}$。
+
+\textbf{数据集。} 我们将使用小规模合成图，包括 $n\in\{500,1000,5000\}$ 的 Erd\H{o}s--R\'{e}nyi 和 Barab\'{a}si--Albert graphs。如果时间允许，也会测试一个真实图，例如 Wiki-Vote 或 NetHEPT。边传播概率将通过加权级联规则（weighted-cascade rule）或固定的小概率设置。
+
+\textbf{评价指标。} 我们报告期望影响力传播范围、运行时间、传播范围求值次数，以及分布式质量比例 $\rho$。对于分布式实验，我们还报告传输的候选节点总数 $mq$。
+
+\section{项目范围和预期目标}
+预期目标刻意保持适度且可衡量：
+\begin{itemize}
+\item 展示贪心选择相比随机、度中心性和 PageRank 基线方法能获得更高的影响力传播范围；
+\item 展示 CELF/惰性贪心在保持贪心质量的同时，减少边际增益求值的数量；
+\item 展示简单分布式贪心存在清晰权衡：增大 $m$ 会减少本地计算，但可能降低 $\rho$；增大 $q$ 会以更高通信成本改善 $\rho$；
+\item 将观察结果与子模性、$(1-1/e)$ 贪心保证，以及近期分布式影响力最大化文献联系起来。
+\end{itemize}
+
+可选扩展只有在时间充足时进行，包括比较不同图划分策略，或添加一个小型 RR-set 最大覆盖演示。这些不属于核心交付内容。
+
+\section{团队信息}
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+成员 & 责任 & 预期贡献 \\
+\midrule
+陈亦新 & 建模与理论 & 问题形式化、相关工作、复杂度分析 \\
+张弼弛 & 算法 & Greedy、CELF、分布式贪心实现 \\
+叶瑶勤 & 实验 & 数据集、评价、绘图、结果分析 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begingroup
+\small
+\setlength{\parskip}{0pt}
+\begin{thebibliography}{9}
+\setlength{\itemsep}{0pt}
+\setlength{\parsep}{0pt}
+\setlength{\parskip}{0pt}
+\bibitem{kempe2003maximizing} D. Kempe, J. Kleinberg, and E. Tardos. Maximizing the spread of influence through a social network. \emph{KDD}, 2003. \url{https://dl.acm.org/doi/10.1145/956750.956769}
+\bibitem{nemhauser1978analysis} G. L. Nemhauser, L. A. Wolsey, and M. L. Fisher. An analysis of approximations for maximizing submodular set functions. \emph{Mathematical Programming}, 1978. \url{https://link.springer.com/article/10.1007/BF01588971}
+\bibitem{leskovec2007cost} J. Leskovec et al. Cost-effective outbreak detection in networks. \emph{KDD}, 2007. \url{https://dl.acm.org/doi/10.1145/1281192.1281239}
+\bibitem{mirzasoleiman2013distributed} B. Mirzasoleiman et al. Distributed submodular maximization: identifying representative elements in massive data. \emph{NeurIPS}, 2013. \url{https://proceedings.neurips.cc/paper/2013/hash/84d2004bf28a2095230e8e14993d398d-Abstract.html}
+\bibitem{wang2023fast} L. Wang, X. Ding, Y. Gu, and Y. Sun. Fast and space-efficient parallel algorithms for influence maximization. \emph{PVLDB}, 17(3):400--413, 2023. \url{https://dblp.org/rec/journals/pvldb/WangDGS23}
+\bibitem{barik2025greediris} R. Barik et al. GreediRIS: Scalable influence maximization using distributed streaming maximum cover. \emph{Journal of Parallel and Distributed Computing}, 198:105037, 2025. \url{https://www.sciencedirect.com/science/article/pii/S0743731525000048}
+\bibitem{chen2024scalable} Y. Chen, T. Dey, and A. Kuhnle. Scalable distributed algorithms for size-constrained submodular maximization in the MapReduce and adaptive complexity models. \emph{JAIR}, 80:1575--1622, 2024. \url{https://www.jair.org/index.php/jair/article/view/15484}
+\end{thebibliography}
+\endgroup
+\end{document}
