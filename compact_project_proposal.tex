@@ -1,0 +1,111 @@
+\documentclass[10pt]{article}
+\usepackage[a4paper,margin=0.55in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{times}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{url}
+\usepackage{titlesec}
+\usepackage{microtype}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2pt}
+\setlength{\abovedisplayskip}{3pt}
+\setlength{\belowdisplayskip}{3pt}
+\setlist[itemize]{leftmargin=*,nosep,topsep=1pt}
+\titlespacing*{\section}{0pt}{4pt}{2pt}
+\titleformat{\section}{\bfseries}{\thesection}{0.5em}{}
+\pagestyle{empty}
+\begin{document}
+\begin{center}
+{\large\bfseries Project Proposal: Communication-Constrained Distributed Influence Maximization}\vspace{1mm}\\
+Yixin Chen \quad Bichi Zhang \quad Yaoqin Ye
+\end{center}
+\vspace{-3mm}
+
+\section{Topic Selection}
+We choose Topic 3: \emph{Influence Maximization}. The task is to select a small number of seed nodes in a network so that information, products, behaviors, or interventions spread to as many nodes as possible. It is a standard model for viral marketing, public-health intervention, and misinformation control, and it gives a clean example of monotone submodular maximization under a cardinality constraint.
+
+The classical influence maximization problem is already well studied. Therefore, instead of proposing a large new system, this project focuses on a compact and course-appropriate variant: \textbf{communication-constrained distributed influence maximization}. In large networks, the graph may be partitioned across several machines or agents. Each local worker can compute only local marginal-gain information and send a small set of candidate seed nodes to a coordinator. We study the following question: \emph{how much influence quality is lost when centralized greedy selection is replaced by local greedy selection plus limited communication?}
+
+The project has two main perspectives. First, from the algorithmic side, we study how greedy selection exploits the submodularity of the influence function and how lazy evaluation reduces repeated marginal-gain computation. Second, from the distributed side, we evaluate how the number of partitions and the candidate communication budget affect the final seed quality. This keeps the workload limited while still connecting classical approximation algorithms to recent scalable and distributed influence maximization research.
+
+\section{Problem Formulation}
+Let $G=(V,E,p)$ be a directed graph, where each edge $(u,v)$ has propagation probability $p_{uv}\in[0,1]$. Given a seed budget $k$, the centralized influence maximization problem is
+\[
+\max_{S\subseteq V,\ |S|\le k}\sigma(S),
+\]
+where $\sigma(S)$ is the expected number of activated nodes from seed set $S$.
+
+We mainly use the Independent Cascade (IC) model. When node $u$ first becomes active, it has one chance to activate each inactive out-neighbor $v$ with probability $p_{uv}$, independently across edges. Under the IC model, $\sigma(S)$ is monotone and submodular \cite{kempe2003maximizing}: for $A\subseteq B\subseteq V$ and $v\notin B$,
+\[
+\sigma(A\cup\{v\})-\sigma(A)\ge \sigma(B\cup\{v\})-\sigma(B).
+\]
+Thus the standard greedy algorithm achieves a $(1-1/e)$ approximation for monotone submodular maximization under a cardinality constraint \cite{nemhauser1978analysis}. Exact influence maximization is NP-hard \cite{kempe2003maximizing}, and exact spread evaluation is expensive, so practical algorithms estimate $\sigma(S)$ by Monte Carlo simulation.
+
+For the distributed setting, suppose the graph is partitioned into $m$ local parts. Worker $i$ observes a local subgraph $G_i$ and returns a small candidate set $C_i$ with $|C_i|\le q$. The coordinator forms
+\[
+C=\bigcup_{i=1}^{m} C_i,
+\]
+and selects the final seed set $S_{\mathrm{dist}}\subseteq C$ with $|S_{\mathrm{dist}}|\le k$. We evaluate its quality against centralized greedy by
+\[
+\rho=\frac{\sigma(S_{\mathrm{dist}})}{\sigma(S_{\mathrm{cent}})},
+\]
+where $S_{\mathrm{cent}}$ is the centralized greedy or lazy-greedy solution. The main experimental variables are the number of partitions $m$ and the local communication budget $q$. This simplified formulation is close to GreeDI-style distributed submodular maximization \cite{mirzasoleiman2013distributed}, but small enough for a course project.
+
+\section{Related Work}
+Kempe, Kleinberg, and Tardos \cite{kempe2003maximizing} introduced influence maximization under the IC and LT diffusion models, proved NP-hardness, and showed that the expected influence function is monotone and submodular. Nemhauser, Wolsey, and Fisher \cite{nemhauser1978analysis} gave the classical $(1-1/e)$ guarantee for greedy maximization of monotone submodular functions under a cardinality constraint. Leskovec et al. \cite{leskovec2007cost} proposed the Cost-Effective Lazy Forward (CELF) method, which exploits diminishing marginal gains to avoid many unnecessary evaluations while preserving the greedy solution.
+
+For distributed optimization, Mirzasoleiman et al. \cite{mirzasoleiman2013distributed} proposed GreeDI: the ground set is partitioned, greedy is run locally, and the selected candidates are merged by a coordinator. This is the main algorithmic template used in our project. Recent work shows that scalability and distribution remain active topics rather than solved details. Wang et al. \cite{wang2023fast} proposed PaC-IM, a parallel and compressed influence maximization framework that reduces the time and space cost of large-scale marginal-gain estimation. Barik et al. \cite{barik2025greediris} proposed GreediRIS, which combines reverse influence sampling with distributed streaming maximum coverage and explicitly studies communication bottlenecks. Chen, Dey, and Kuhnle \cite{chen2024scalable} studied scalable distributed algorithms for size-constrained submodular maximization in MapReduce and adaptive-complexity models. These recent papers motivate our narrower experimental question: how well does a simple GreeDI-style candidate-sharing scheme approximate centralized greedy under limited communication?
+
+\section{Algorithm and Technical Plan}
+To keep the project feasible within the course timeline, we treat state-of-the-art systems such as TIM, IMM, PaC-IM, and GreediRIS mainly as reference methods rather than full reproduction targets. Our implementation will focus on the following methods.
+
+\textbf{Baselines.} Random selection; degree centrality; and PageRank-based seed selection.
+
+\textbf{Centralized greedy.} At each step, select the node with the largest estimated marginal gain, where influence spread is estimated by Monte Carlo simulation under the IC model.
+
+\textbf{Lazy greedy / CELF.} Maintain a priority queue of candidate marginal gains and recompute a node only when necessary. This should return the same seed set as standard greedy in most cases, while reducing the number of spread evaluations.
+
+\textbf{Simple distributed greedy.} Partition $V$ into $m$ parts. Each worker runs local greedy on its own subgraph and returns its top $q$ candidate nodes. The coordinator merges all candidates and runs a final greedy selection on the induced candidate pool. We test $m\in\{2,4,8\}$ and $q\in\{k,2k,5k\}$.
+
+\textbf{Datasets.} We will use small synthetic graphs, including Erd\H{o}s--R\'{e}nyi and Barab\'{a}si--Albert graphs with $n\in\{500,1000,5000\}$. If time permits, we will also test one real graph such as Wiki-Vote or NetHEPT. Edge probabilities will be set by a weighted-cascade rule or a fixed small probability.
+
+\textbf{Metrics.} We report expected influence spread, runtime, number of spread evaluations, and distributed quality ratio $\rho$. For distributed experiments, we also report the total number of transmitted candidate nodes $mq$.
+
+\section{Project Scope and Expected Goals}
+The expected goals are deliberately modest and measurable:
+\begin{itemize}
+\item show that greedy selection gives higher influence spread than random, degree, and PageRank baselines;
+\item show that CELF/lazy greedy preserves greedy quality while reducing the number of marginal-gain evaluations;
+\item show that simple distributed greedy has a clear trade-off: increasing $m$ reduces local computation but can lower $\rho$, while increasing $q$ improves $\rho$ at a higher communication cost;
+\item connect the observations to submodularity, the $(1-1/e)$ greedy guarantee, and recent distributed influence maximization literature.
+\end{itemize}
+
+Optional extensions, only if time remains, include comparing different graph partition strategies or adding a small RR-set maximum-coverage demo. These are not part of the core deliverable.
+
+\section{Team Information}
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Member & Responsibility & Expected Contribution \\
+\midrule
+Yixin Chen & Modeling and theory & Problem formulation, related work, complexity analysis \\
+Bichi Zhang & Algorithms & Greedy, CELF, distributed greedy implementation \\
+Yaoqin Ye & Experiments & Datasets, evaluation, plots, result analysis \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{thebibliography}{9}
+\setlength{\itemsep}{0pt}
+\bibitem{kempe2003maximizing} D. Kempe, J. Kleinberg, and E. Tardos. Maximizing the spread of influence through a social network. \emph{KDD}, 2003.
+\bibitem{nemhauser1978analysis} G. L. Nemhauser, L. A. Wolsey, and M. L. Fisher. An analysis of approximations for maximizing submodular set functions. \emph{Mathematical Programming}, 1978.
+\bibitem{leskovec2007cost} J. Leskovec et al. Cost-effective outbreak detection in networks. \emph{KDD}, 2007.
+\bibitem{mirzasoleiman2013distributed} B. Mirzasoleiman et al. Distributed submodular maximization: identifying representative elements in massive data. \emph{NeurIPS}, 2013.
+\bibitem{wang2023fast} L. Wang, X. Ding, Y. Gu, and Y. Sun. Fast and space-efficient parallel algorithms for influence maximization. \emph{PVLDB}, 17(3):400--413, 2023.
+\bibitem{barik2025greediris} R. Barik et al. GreediRIS: Scalable influence maximization using distributed streaming maximum cover. \emph{Journal of Parallel and Distributed Computing}, 198:105037, 2025.
+\bibitem{chen2024scalable} Y. Chen, T. Dey, and A. Kuhnle. Scalable distributed algorithms for size-constrained submodular maximization in the MapReduce and adaptive complexity models. \emph{JAIR}, 80:1575--1622, 2024.
+\end{thebibliography}
+\end{document}
