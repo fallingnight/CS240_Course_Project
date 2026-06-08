@@ -33,6 +33,7 @@
 | `src/metrics.py` | quality ratio、通信代理指标和 marginal gain 工具 |
 | `src/experiments.py` | 端到端实验入口 |
 | `src/plotting.py` | 图像生成 |
+| `src/graph_visualization.py` | small 规模图结构可视化 |
 | `tests/` | 轻量级单元测试 |
 | `outputs/` | 生成的 CSV 结果和实验图 |
 | `references/` | 项目参考论文 |
@@ -49,6 +50,7 @@
 | 分布式 `m` 个分区和本地候选预算 `q` | `src/distributed.py` |
 | 实验用例、CSV 指标、`m/q` sweep | `src/experiments.py` |
 | 要画哪些图以及图的格式 | `src/plotting.py` |
+| small 图结构可视化 | `src/graph_visualization.py` |
 | spread/runtime/evaluations 等统一结果字段 | `src/results.py` |
 
 `src/algorithms.py` 保留了旧的统一导入方式，但新的代码建议直接从对应功能模块导入。
@@ -84,6 +86,12 @@ python src/experiments.py --seed 7 --simulations 40
 - `outputs/influence_maximization/figures/spread_evaluations.png`
 - `outputs/influence_maximization/figures/transmitted_candidates.png`
 
+默认的 `--scale small` 使用 ER/BA/WS 的 `n = 40, 70`，并保留固定 34 节点
+Karate 图。使用 `--scale large` 会运行 ER/BA/WS 的 `n = 50, 100, 200`；
+large 结果会单独保存为 `outputs/influence_maximization/influence_results_large.csv`
+和 `outputs/influence_maximization/figures/*_large.png`。合成图规模可以通过
+`--sizes` 手动指定，`--no-progress` 可以关闭进度条。
+
 只有在明确想单独保存某次运行时，才需要使用 `--output-dir SOME_PATH`，例如快速
 smoke test。
 
@@ -104,6 +112,9 @@ CSV 中有两个 spread 字段：
 ## 结果图
 
 最新生成的实验图保存在 `outputs/influence_maximization/figures/`。
+
+`comparisons/` 子目录保存所有报告指标的节点数比较和方法比较柱状图。`graphs/`
+子目录保存由 `src/graph_visualization.py` 生成的 small 图结构可视化。
 
 <table>
   <tr>
