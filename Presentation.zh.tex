@@ -1,0 +1,226 @@
+\documentclass[UTF8, 10pt]{ctexbeamer}
+
+\usetheme{Madrid}
+\usecolortheme{default}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\usepackage{amsmath, amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+
+\title[分布式影响力最大化]{分布式影响力最大化中的子模优化与贪心近似算法}
+\author{Yixin Chen \and Bichi Zhang \and Yaoqin Ye}
+\institute{CS240：算法设计与分析}
+\date{2026 年春季学期}
+
+\begin{document}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}{项目目标}
+    \begin{itemize}
+        \item 选题：Topic 3，影响力最大化。
+        \item 在网络中选择 $k$ 个种子节点，使期望扩散范围最大。
+        \item 将现代网络数据问题与经典算法联系起来：
+        \begin{itemize}
+            \item 单调子模最大化；
+            \item 贪心近似算法；
+            \item CELF 懒惰求值；
+            \item GreeDI 风格的分布式候选节点共享。
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{问题形式化}
+    \[
+        \max_{S\subseteq V,\ |S|\leq k} \sigma(S)
+    \]
+    \begin{itemize}
+        \item $G=(V,E,p)$ 是带传播概率 $p_{uv}$ 的有向图。
+        \item $\sigma(S)$ 表示从种子集合 $S$ 出发后的期望激活节点数。
+        \item 本项目使用独立级联模型：
+        \begin{itemize}
+            \item 新激活节点 $u$ 对每个未激活出邻居 $v$ 有一次激活机会；
+            \item 激活以概率 $p_{uv}$ 独立成功。
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{算法基础}
+    \begin{itemize}
+        \item IC 模型下，$\sigma(S)$ 是单调子模函数。
+    \end{itemize}
+    \[
+        \sigma(A\cup\{v\})-\sigma(A)
+        \geq
+        \sigma(B\cup\{v\})-\sigma(B)
+    \]
+    \[
+        A\subseteq B,\quad v\notin B
+    \]
+    \begin{itemize}
+        \item 贪心算法对精确目标具有 $(1-1/e)$ 近似保证。
+        \item CELF 利用边际收益递减，减少重复的边际收益估计。
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{实现的方法}
+    \begin{itemize}
+        \item 基线方法：
+        \begin{itemize}
+            \item 随机选择；
+            \item 加权出度；
+            \item PageRank。
+        \end{itemize}
+        \item 中心化方法：
+        \begin{itemize}
+            \item Monte Carlo 贪心；
+            \item CELF 懒惰贪心。
+        \end{itemize}
+        \item 分布式方法：
+        \begin{itemize}
+            \item 将节点划分为 $m$ 个部分；
+            \item 每个 worker 返回最多 $q$ 个局部候选节点；
+            \item 协调器在合并候选池上再次运行贪心。
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{实验设置}
+    \begin{itemize}
+        \item 图实例：
+        \begin{itemize}
+            \item Erdos--Renyi，$n=40,70$；
+            \item Barabasi--Albert，$n=40,70$；
+            \item Watts--Strogatz，$n=60$；
+            \item Karate Club，$n=34$。
+        \end{itemize}
+        \item 种子预算：$k=5$ 或 $k=6$。
+        \item 边概率：weighted-cascade 规则。
+        \item 分布式参数：
+        \[
+            m\in\{2,4,8\},\qquad q\in\{k,2k,5k\}.
+        \]
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{评价指标}
+    \begin{itemize}
+        \item 估计影响范围。
+        \item 运行时间。
+        \item spread evaluation 次数。
+        \item 分布式质量比例：
+        \[
+            \rho =
+            \frac{\sigma(S_{\mathrm{dist}})}
+                 {\sigma(S_{\mathrm{greedy}})}.
+        \]
+        \item 通信代价近似：传输候选节点数量。
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{整体结果}
+    \begin{table}
+    \centering
+    \small
+    \begin{tabular}{lrrrr}
+    \toprule
+    方法 & Spread & Ratio & Time & Eval. \\
+    \midrule
+    Random & 16.58 & 0.93 & 0.00 & 1.0 \\
+    Degree & 24.42 & 1.37 & 0.00 & 1.0 \\
+    PageRank & 22.92 & 1.27 & 0.00 & 1.0 \\
+    Greedy & 18.08 & 1.00 & 0.06 & 283.5 \\
+    CELF & 18.92 & 1.04 & 0.02 & 112.0 \\
+    Best dist. avg. & 24.00 & 1.34 & 0.32 & 359.5 \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
+    \begin{itemize}
+        \item CELF 在保持相近质量的同时减少了估计次数。
+        \item 在这些小型 weighted-cascade 图上，Degree/PageRank 很强。
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{影响范围}
+    \centering
+    \includegraphics[width=0.94\linewidth]{../outputs/influence_maximization/figures/estimated_spread.png}
+\end{frame}
+
+\begin{frame}{分布式权衡}
+    \begin{table}
+    \centering
+    \scriptsize
+    \begin{tabular}{lrrrrr}
+    \toprule
+    $(m,q/k)$ & Spread & Ratio & Time & Eval. & Cand. \\
+    \midrule
+    $(2,1)$ & 21.58 & 1.19 & 0.30 & 321.5 & 11.0 \\
+    $(2,2)$ & 21.00 & 1.16 & 0.64 & 591.5 & 22.0 \\
+    $(2,5)$ & 21.50 & 1.20 & 1.37 & 1021.5 & 49.0 \\
+    $(4,1)$ & 24.00 & 1.34 & 0.32 & 359.5 & 22.0 \\
+    $(4,2)$ & 21.50 & 1.18 & 0.61 & 599.8 & 43.0 \\
+    $(4,5)$ & 22.08 & 1.22 & 0.71 & 683.8 & 52.3 \\
+    $(8,1)$ & 22.00 & 1.21 & 0.42 & 430.5 & 43.0 \\
+    $(8,2)$ & 21.00 & 1.16 & 0.58 & 503.2 & 52.3 \\
+    $(8,5)$ & 21.92 & 1.22 & 0.51 & 503.2 & 52.3 \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
+\end{frame}
+
+\begin{frame}{质量与通信}
+    \centering
+    \includegraphics[width=0.48\linewidth]{../outputs/influence_maximization/figures/quality_ratio_to_greedy.png}
+    \includegraphics[width=0.48\linewidth]{../outputs/influence_maximization/figures/transmitted_candidates.png}
+\end{frame}
+
+\begin{frame}{运行时间与估计次数}
+    \centering
+    \includegraphics[width=0.48\linewidth]{../outputs/influence_maximization/figures/runtime_seconds.png}
+    \includegraphics[width=0.48\linewidth]{../outputs/influence_maximization/figures/spread_evaluations.png}
+\end{frame}
+
+\begin{frame}{结果解释}
+    \begin{itemize}
+        \item 贪心理论保证针对精确子模目标。
+        \item 实现中使用 Monte Carlo 估计进行选择。
+        \item 小图和较少模拟次数会让最终种子集合受随机性影响。
+        \item 因此 Degree/PageRank 或部分 distributed 设置在公平再评估后可能超过 greedy。
+        \item 实验仍然复现了核心机制：
+        \begin{itemize}
+            \item 子模贪心选择；
+            \item 懒惰边际收益复用；
+            \item 通信受限候选共享。
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{局限与拓展}
+    \begin{itemize}
+        \item 当前图规模小于 proposal 中完整可扩展性目标。
+        \item Monte Carlo 模拟次数为了运行时间有所限制。
+        \item 后续改进：
+        \begin{itemize}
+            \item 多随机种子重复并报告置信区间；
+            \item 测试 Wiki-Vote 或 NetHEPT；
+            \item 加入 RR-set 最大覆盖方法；
+            \item 并行化分布式 worker。
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{结论}
+    \begin{itemize}
+        \item 影响力最大化连接了现代网络应用与经典近似算法。
+        \item IC 影响范围是单调子模函数，因此可使用贪心近似。
+        \item CELF 展示了理论性质如何转化为实际加速。
+        \item GreeDI 风格候选共享体现了通信限制的代价。
+        \item 实验质量同时受图结构和扩散估计精度影响。
+    \end{itemize}
+\end{frame}
+
+\end{document}
