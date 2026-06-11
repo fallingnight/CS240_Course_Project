@@ -2,6 +2,7 @@
 
 \usetheme{Madrid}
 \usecolortheme{default}
+\usefonttheme{serif}
 \setbeamertemplate{navigation symbols}{}
 \setbeamertemplate{footline}[frame number]
 \usepackage{amsmath, amssymb}
@@ -14,6 +15,7 @@
 \definecolor{softslate}{HTML}{F1F5F9}
 \definecolor{amber}{HTML}{D97706}
 \definecolor{blue}{HTML}{2563EB}
+\definecolor{mint}{HTML}{CCFBF1}
 
 \setbeamercolor{title}{fg=ink}
 \setbeamercolor{frametitle}{fg=white,bg=deepteal}
@@ -36,9 +38,35 @@
 
 \begin{document}
 
-\begin{frame}
-    \titlepage
+\begingroup
+\setbeamercolor{background canvas}{bg=white}
+\begin{frame}[plain]
+    \vspace{0.72cm}
+    {\color{deepteal}\large CS240：算法设计与分析}
+
+    \vspace{0.44cm}
+    \begingroup
+    \color{ink}\sffamily\bfseries\fontsize{25}{33}\selectfont
+    \begin{tabular}{@{}l@{}}
+    分布式影响力最大化中的\\
+    子模优化与贪心近似算法
+    \end{tabular}
+    \endgroup
+
+    \vspace{0.34cm}
+    {\color{deepteal}\rmfamily\large 带通信约束候选共享的课程规模复现\par}
+
+    \vspace{0.52cm}
+    {\color{amber}\rule{0.18\linewidth}{1.4pt}\hspace{0.16cm}
+    \color{deepteal}\rule{0.54\linewidth}{1.4pt}}
+
+    \vfill
+    {\color{ink}\rmfamily\large Yixin Chen \quad Bichi Zhang \quad Yaoqin Ye}
+
+    \vspace{0.16cm}
+    {\color{deepteal}\rmfamily 2026 年春季学期}
 \end{frame}
+\endgroup
 
 \begin{frame}{项目概览}
     \begin{columns}[T,onlytextwidth]
