@@ -29,11 +29,12 @@ monotone submodular maximization, greedy approximation, lazy evaluation, and a
 communication-constrained distributed variant. We implemented Independent
 Cascade simulation, random/degree/PageRank baselines, centralized Monte Carlo
 greedy, CELF lazy greedy, and a GreeDI-style local candidate sharing method.
-Experiments were run on synthetic and small real-world benchmark graphs. The
-results show that structural baselines are surprisingly strong on small graphs,
-that CELF reduces the number of influence evaluations while preserving the same
-algorithmic objective, and that distributed candidate sharing exposes a clear
-tradeoff among solution quality, runtime, and communication budget.
+Experiments were run on both quick small benchmarks and a larger course-scale
+preset. The current results show that structural baselines are surprisingly
+strong under the weighted-cascade probability rule, that CELF preserves greedy
+quality while cutting large-preset spread evaluations from 1026.5 to 266.2 on
+average, and that distributed candidate sharing exposes a clear tradeoff among
+solution quality, runtime, and communication budget.
 \end{abstract}
 
 \section{Background and Related Work}
@@ -57,12 +58,17 @@ The difficulty is that exact influence spread is expensive to compute. A
 straightforward implementation estimates the spread of many candidate seed sets
 using Monte Carlo simulation. Leskovec et al.~\cite{leskovec2007} proposed
 CELF, a lazy greedy method that uses submodularity to avoid many repeated
-marginal-gain evaluations. For large-scale or distributed settings,
-Mirzasoleiman et al.~\cite{mirzasoleiman2013} proposed GreeDI, which runs
-greedy locally on partitions and then merges local representatives. More recent
-methods such as TIM/IMM~\cite{tang2014,tang2015} use reverse influence sampling
-to scale influence maximization further; in this project, those methods are
-treated as related work rather than full reproduction targets.
+marginal-gain evaluations. For distributed settings, Mirzasoleiman
+et al.~\cite{mirzasoleiman2013} proposed GreeDI, which runs greedy locally on
+partitions and then merges local representatives. Recent work reinforces that
+scalability is still an active algorithmic issue: TIM/IMM~\cite{tang2014,tang2015}
+use reverse influence sampling, PaC-IM~\cite{wang2023} compresses and
+parallelizes influence maximization sketches, Chen et al.~\cite{chen2024} study
+distributed submodular maximization in MapReduce and adaptive-complexity
+models, and GreediRIS~\cite{barik2025} combines reverse influence sampling with
+distributed streaming maximum coverage. In this project, these systems motivate
+the communication-constrained question, but the implementation focuses on a
+transparent GreeDI-style reproduction.
 
 \section{Problem Formulation}
 
@@ -154,13 +160,30 @@ The source code is organized as follows:
 \end{itemize}
 
 Because exact reproduction of large influence maximization systems is beyond
-the scope of the course project, we reproduced the core algorithmic claims at a
-smaller scale: IC spread estimation, greedy submodular selection, CELF lazy
-evaluation, and distributed local-candidate merging. The experiment runner used
-six cases: Erdos--Renyi graphs with 40 and 70 nodes, Barabasi--Albert graphs
-with 40 and 70 nodes, a Watts--Strogatz graph with 60 nodes, and Zachary's
-Karate Club graph with 34 nodes. The seed budget was $k=5$ or $k=6$ depending
-on the case.
+the scope of the course project, we reproduced the core algorithmic mechanisms:
+IC spread estimation, greedy submodular selection, CELF lazy evaluation, and
+distributed local-candidate merging. The final code supports two benchmark
+presets. The quick \texttt{small} preset uses Erdos--Renyi, Barabasi--Albert,
+and Watts--Strogatz graphs with $n\in\{40,70\}$, plus Zachary's Karate Club
+graph with 34 nodes. The \texttt{large} preset uses the same three synthetic
+families with $n\in\{50,100,200\}$, plus Karate. The synthetic large graphs use
+$k=10$, while Karate uses $k=5$. The reported CSV files are stored in the
+output directory as \texttt{influence\_results.csv} and
+\texttt{influence\_results\_large.csv}.
+
+Figure~\ref{fig:graph-structures} shows the graph structures used by the quick
+small preset. These plots are included because graph topology directly affects
+which seed-selection heuristics work well: Erdos--Renyi graphs emphasize random
+connectivity, Barabasi--Albert graphs contain hubs, Watts--Strogatz graphs
+emphasize local small-world structure, and Karate provides a small real social
+network.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\linewidth]{outputs/influence_maximization/figures/graphs/small_graph_structures.png}
+\caption{Small benchmark graph structures colored by weighted out-degree.}
+\label{fig:graph-structures}
+\end{figure}
 
 Each algorithm's final seed set was re-evaluated using a common Monte Carlo
 seed for the same graph case. This makes the reported spread more comparable
@@ -168,10 +191,19 @@ than the internal spread estimates used during selection.
 
 \section{Experimental Evaluation}
 
+The report embeds the topology overview and one figure for each main metric:
+estimated spread, quality ratio, transmitted candidates, spread evaluations,
+and runtime. The experiment script also generates horizontal and vertical
+comparison bar charts under \texttt{figures/comparisons/}; those plots are not
+all embedded here because they restate the same metrics in a different layout.
+
 \subsection{Overall Algorithm Comparison}
 
-Table~\ref{tab:overall} summarizes the average results across all graph cases.
-The reported ratio is relative to centralized greedy on the same graph.
+Table~\ref{tab:overall} summarizes the current large-preset results across ten
+graph cases. The reported ratio is relative to centralized greedy on the same
+graph after fair re-evaluation. The small preset remains available as a quick
+smoke test and shows the same qualitative pattern, but the large preset better
+reflects the final project state.
 
 \begin{table}[H]
 \centering
@@ -181,39 +213,39 @@ The reported ratio is relative to centralized greedy on the same graph.
 \toprule
 Algorithm & Spread & Ratio & Runtime (s) & Evaluations \\
 \midrule
-Random & 16.58 & 0.93 & 0.00 & 1.0 \\
-Degree & 24.42 & 1.37 & 0.00 & 1.0 \\
-PageRank & 22.92 & 1.27 & 0.00 & 1.0 \\
-Greedy & 18.08 & 1.00 & 0.06 & 283.5 \\
-CELF & 18.92 & 1.04 & 0.02 & 112.0 \\
-Best distributed average setting & 24.00 & 1.34 & 0.32 & 359.5 \\
+Random & 31.59 & 0.79 & 0.00 & 1.0 \\
+Weighted degree & 43.71 & 1.07 & 0.01 & 1.0 \\
+PageRank & 35.19 & 0.89 & 0.00 & 1.0 \\
+Greedy & 40.43 & 1.00 & 4.67 & 1026.5 \\
+CELF & 40.05 & 0.99 & 0.77 & 266.2 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The most important observation is that the small-scale experiment does not show
-a clean dominance of greedy over structural baselines. Degree and PageRank
-perform very well on these graphs, especially because the weighted-cascade
-probability rule favors high-degree structural positions. This is not a
-contradiction of the greedy approximation theorem: the theorem compares greedy
-to the optimal seed set for the exact submodular objective, while our
-implementation uses noisy Monte Carlo estimates during selection and then
-re-evaluates final seed sets with another random seed.
+The large-preset experiment still does not show a clean dominance of greedy
+over structural baselines. Weighted degree is especially strong because the
+weighted-cascade probability rule gives structurally central nodes high
+influence potential. This is not a contradiction of the greedy approximation
+theorem: the theorem compares exact greedy to the optimal seed set for the
+exact submodular objective, while our implementation selects using noisy Monte
+Carlo estimates and then re-evaluates final seed sets with another random seed.
 
-CELF behaves as expected: it obtains similar average spread to greedy but uses
-fewer spread evaluations, reducing the average from 283.5 to 112.0 evaluations.
-This directly demonstrates the benefit of lazy evaluation.
+CELF behaves as expected. It obtains essentially the same average spread as
+greedy, with ratio 0.99, while reducing spread evaluations from 1026.5 to
+266.2 and runtime from 4.67 seconds to 0.77 seconds on average. This is the
+clearest theory-to-practice result of the reproduction.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.92\linewidth]{../outputs/influence_maximization/figures/estimated_spread.png}
-\caption{Estimated IC spread by graph size and algorithm.}
+\includegraphics[width=0.92\linewidth]{outputs/influence_maximization/figures/estimated_spread_large.png}
+\caption{Estimated IC spread on the large preset.}
 \end{figure}
 
 \subsection{Distributed Communication Tradeoff}
 
-Table~\ref{tab:distributed} summarizes the distributed variants. The notation
-$(m,q/k)$ means $m$ partitions and local candidate budget $q=(q/k)\cdot k$.
+Table~\ref{tab:distributed} summarizes the large-preset distributed variants.
+The notation $(m,q/k)$ means $m$ partitions and local candidate budget
+$q=(q/k)\cdot k$.
 
 \begin{table}[H]
 \centering
@@ -223,82 +255,90 @@ $(m,q/k)$ means $m$ partitions and local candidate budget $q=(q/k)\cdot k$.
 \toprule
 Setting & Spread & Ratio & Runtime (s) & Evaluations & Candidates \\
 \midrule
-$(2,1)$ & 21.58 & 1.19 & 0.30 & 321.5 & 11.0 \\
-$(2,2)$ & 21.00 & 1.16 & 0.64 & 591.5 & 22.0 \\
-$(2,5)$ & 21.50 & 1.20 & 1.37 & 1021.5 & 49.0 \\
-$(4,1)$ & 24.00 & 1.34 & 0.32 & 359.5 & 22.0 \\
-$(4,2)$ & 21.50 & 1.18 & 0.61 & 599.8 & 43.0 \\
-$(4,5)$ & 22.08 & 1.22 & 0.71 & 683.8 & 52.3 \\
-$(8,1)$ & 22.00 & 1.21 & 0.42 & 430.5 & 43.0 \\
-$(8,2)$ & 21.00 & 1.16 & 0.58 & 503.2 & 52.3 \\
-$(8,5)$ & 21.92 & 1.22 & 0.51 & 503.2 & 52.3 \\
+$(2,1)$ & 40.43 & 1.00 & 1.54 & 1130.5 & 19.0 \\
+$(2,2)$ & 40.28 & 0.99 & 3.78 & 2114.5 & 38.0 \\
+$(2,5)$ & 38.40 & 0.95 & 9.89 & 3984.1 & 78.4 \\
+$(4,1)$ & 39.39 & 0.96 & 1.54 & 1234.5 & 38.0 \\
+$(4,2)$ & 38.56 & 0.96 & 3.43 & 2072.1 & 66.4 \\
+$(4,5)$ & 39.48 & 0.98 & 6.44 & 3068.1 & 108.4 \\
+$(8,1)$ & 39.70 & 0.98 & 1.66 & 1362.1 & 66.4 \\
+$(8,2)$ & 37.95 & 0.94 & 2.86 & 1924.9 & 96.4 \\
+$(8,5)$ & 36.72 & 0.93 & 3.12 & 2080.9 & 108.4 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 The distributed results show the expected cost side of the tradeoff clearly:
-larger local budgets generally increase the number of transmitted candidates
-and spread evaluations. The quality side is noisier. In several cases,
-distributed candidate sharing beats the centralized greedy baseline after fair
-re-evaluation. This can happen because local greedy introduces diversity into
-the candidate pool and because the centralized greedy baseline is selected
-under noisy Monte Carlo estimates. The result should therefore be interpreted
-as evidence that candidate sharing can be competitive on small graphs, not as a
-claim that it theoretically dominates centralized greedy.
+larger local budgets increase transmitted candidates and usually increase
+spread evaluations. The quality side is not monotone. The best average
+distributed setting in the large preset is $(m,q/k)=(2,1)$, which is essentially
+tied with centralized greedy after fair re-evaluation. Increasing $q$ does not
+automatically improve quality in this run because local and coordinator
+selection still rely on noisy Monte Carlo estimates. The right interpretation
+is that small candidate pools can be competitive, while extra communication has
+real computational cost and needs more stable estimation to be consistently
+useful.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.92\linewidth]{../outputs/influence_maximization/figures/quality_ratio_to_greedy.png}
-\caption{Quality ratio relative to centralized greedy.}
+\includegraphics[width=0.92\linewidth]{outputs/influence_maximization/figures/quality_ratio_to_greedy_large.png}
+\caption{Quality ratio relative to centralized greedy on the large preset.}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.92\linewidth]{../outputs/influence_maximization/figures/transmitted_candidates.png}
-\caption{Communication proxy: number of transmitted candidates.}
+\includegraphics[width=0.92\linewidth]{outputs/influence_maximization/figures/transmitted_candidates_large.png}
+\caption{Communication proxy: number of transmitted candidates on the large preset.}
 \end{figure}
 
 \subsection{Runtime and Evaluation Counts}
 
-Centralized greedy has a small wall-clock time on these graphs, but its
-evaluation count grows with $k$ and the number of candidate nodes. CELF reduces
-the number of evaluations by reusing marginal-gain upper bounds. Distributed
-variants perform more total evaluations because each worker runs a local greedy
-phase and the coordinator runs another greedy phase. This is acceptable only
-when worker computations are parallelized or when full-graph candidate search
-is impossible due to memory or ownership constraints.
+Centralized greedy becomes noticeably more expensive on the large preset:
+average spread evaluations rise to 1026.5. CELF reduces this to 266.2 by
+reusing marginal-gain upper bounds. Distributed variants perform more total
+evaluations because each worker runs a local greedy phase and the coordinator
+runs another greedy phase. This is acceptable only when worker computations are
+parallelized or when full-graph candidate search is impossible due to memory,
+ownership, privacy, or communication constraints. The current implementation
+models the communication-limited algorithmic structure, but it does not execute
+workers in parallel.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.92\linewidth]{../outputs/influence_maximization/figures/spread_evaluations.png}
-\caption{Number of spread evaluations. CELF reduces evaluations compared with naive greedy.}
+\includegraphics[width=0.92\linewidth]{outputs/influence_maximization/figures/spread_evaluations_large.png}
+\caption{Number of spread evaluations on the large preset. CELF reduces evaluations compared with naive greedy.}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.92\linewidth]{../outputs/influence_maximization/figures/runtime_seconds.png}
-\caption{Wall-clock runtime on the current benchmark set.}
+\includegraphics[width=0.92\linewidth]{outputs/influence_maximization/figures/runtime_seconds_large.png}
+\caption{Wall-clock runtime on the large preset.}
 \end{figure}
 
 \section{Deviations, Limitations, and Optional Extensions}
 
-The proposal mentioned larger synthetic graphs and possible real networks such
-as Wiki-Vote or NetHEPT. The current reproduction uses smaller graphs so that
-the whole experiment can run quickly in the course-project environment. This
-choice keeps the implementation transparent, but it limits scalability claims.
+The proposal mentioned larger synthetic graphs with $n\in\{500,1000,5000\}$ and
+possible real networks such as Wiki-Vote or NetHEPT. The final reproduction
+uses course-scale synthetic graphs up to 200 nodes plus Karate, so that the
+whole experiment can run reliably with Monte Carlo greedy in the course-project
+environment. This choice keeps the implementation transparent, but it limits
+strong scalability claims. The experiment runner now supports custom synthetic
+sizes through \texttt{--sizes}, but the submitted CSV outputs use the documented
+small and large presets.
 
 Another limitation is Monte Carlo noise. The experiment uses a modest number of
 simulations for speed, and distributed variants use fewer simulations during
 their local selections. As a result, the selected seed set may be sensitive to
-randomness. This explains why the fair re-evaluation sometimes ranks degree or
-distributed variants above centralized greedy. A stronger final experiment
-would increase the simulation count, average over multiple random seeds, and
-report confidence intervals.
+randomness. This explains why fair re-evaluation sometimes ranks weighted
+degree, CELF, or distributed variants above centralized greedy. A stronger
+final experiment would increase the simulation count, average over multiple
+random seeds, and report confidence intervals.
 
 The implemented optional extension is the GreeDI-style communication-constrained
-variant. Further possible extensions include deterministic partition strategies,
-larger real datasets, RR-set based maximum coverage, and parallel worker
-execution to measure true distributed speedup.
+variant, together with small and large presets plus graph-structure
+visualizations. Further possible extensions include deterministic partition
+strategies, larger real datasets, RR-set based maximum coverage, and parallel
+worker execution to measure true distributed speedup.
 
 \section{Conclusion}
 
@@ -308,7 +348,7 @@ monotone submodular objective; greedy selection provides a theoretical
 approximation guarantee; CELF turns submodularity into a practical acceleration;
 and GreeDI-style candidate sharing connects the problem to distributed
 optimization under communication limits. The empirical results are intentionally
-small-scale, but they reproduce the central algorithmic mechanisms and expose
+course-scale, but they reproduce the central algorithmic mechanisms and expose
 the main practical issue: influence maximization quality depends not only on
 the approximation algorithm, but also on spread-estimation accuracy, graph
 structure, and communication constraints.
@@ -344,6 +384,21 @@ Y. Tang, X. Xiao, and Y. Shi.
 Y. Tang, Y. Shi, and X. Xiao.
 \newblock Influence maximization in near-linear time: A martingale approach.
 \newblock \emph{SIGMOD}, 2015.
+
+\bibitem{wang2023}
+L. Wang, X. Ding, Y. Gu, and Y. Sun.
+\newblock Fast and space-efficient parallel algorithms for influence maximization.
+\newblock \emph{PVLDB}, 2023.
+
+\bibitem{chen2024}
+Y. Chen, T. Dey, and A. Kuhnle.
+\newblock Scalable distributed algorithms for size-constrained submodular maximization in the MapReduce and adaptive complexity models.
+\newblock \emph{JAIR}, 2024.
+
+\bibitem{barik2025}
+R. Barik, W. Cappa, S. M. Ferdous, M. Minutoli, M. Halappanavar, and A. Kalyanaraman.
+\newblock GreediRIS: Scalable influence maximization using distributed streaming maximum cover.
+\newblock \emph{Journal of Parallel and Distributed Computing}, 2025.
 
 \end{thebibliography}
 
